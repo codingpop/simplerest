@@ -10,22 +10,19 @@ import (
 	"github.com/go-chi/chi"
 )
 
-var m = &sync.RWMutex{}
-
 type post struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`
 	Body  string `json:"body"`
 }
 
-var posts = []post{{
-	ID:    1,
-	Body:  "You",
-	Title: "YOusdkfkd",
-}}
+type store struct {
+	posts []post
+	m     *sync.RWMutex
+}
 
-func find(id int) (int, bool) {
-	for i, v := range posts {
+func (s *store) find(id int) (int, bool) {
+	for i, v := range s.posts {
 		if v.ID == id {
 			return i, true
 		}
@@ -34,10 +31,10 @@ func find(id int) (int, bool) {
 	return 0, false
 }
 
-func getPosts(w http.ResponseWriter, r *http.Request) {
-	m.RLock()
-	resp, err := json.Marshal(posts)
-	m.RUnlock()
+func (s *store) getPosts(w http.ResponseWriter, r *http.Request) {
+	s.m.RLock()
+	resp, err := json.Marshal(s.posts)
+	s.m.RUnlock()
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -49,22 +46,22 @@ func getPosts(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getPost(w http.ResponseWriter, r *http.Request) {
+func (s *store) getPost(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
 
-	m.RLock()
-	i, ok := find(id)
+	s.m.RLock()
+	i, ok := s.find(id)
 	if !ok {
 		http.Error(w, "post not found", http.StatusNotFound)
 		return
 	}
 
-	post := posts[i]
-	m.RUnlock()
+	post := s.posts[i]
+	s.m.RUnlock()
 	resp, err := json.Marshal(post)
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -77,7 +74,7 @@ func getPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func updatePost(w http.ResponseWriter, r *http.Request) {
+func (s *store) updatePost(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "invalid id", http.StatusBadRequest)
@@ -90,18 +87,18 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 	}
 
-	m.Lock()
-	i, ok := find(id)
+	s.m.Lock()
+	i, ok := s.find(id)
 	if !ok {
 		http.Error(w, "post not found", http.StatusNotFound)
 		return
 	}
 
-	updated := posts[i]
+	updated := s.posts[i]
 	updated.Body = p.Body
 	updated.Title = p.Title
-	posts[i] = updated
-	m.Unlock()
+	s.posts[i] = updated
+	s.m.Unlock()
 
 	resp, err := json.Marshal(updated)
 	if err != nil {
@@ -115,7 +112,7 @@ func updatePost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func createPost(w http.ResponseWriter, r *http.Request) {
+func (s *store) createPost(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var p post
 	if err := decoder.Decode(&p); err != nil {
@@ -124,15 +121,15 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := 1
-	count := len(posts)
+	count := len(s.posts)
 	if count > 0 {
-		id = posts[count-1].ID + 1
+		id = s.posts[count-1].ID + 1
 	}
 
 	p.ID = id
-	m.Lock()
-	posts = append(posts, p)
-	m.Unlock()
+	s.m.Lock()
+	s.posts = append(s.posts, p)
+	s.m.Unlock()
 	resp, err := json.Marshal(p)
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -145,35 +142,45 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func deletePost(w http.ResponseWriter, r *http.Request) {
+func (s *store) deletePost(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
 
-	m.Lock()
-	i, ok := find(id)
+	s.m.Lock()
+	i, ok := s.find(id)
 	if !ok {
 		http.Error(w, "post not found", http.StatusNotFound)
 		return
 	}
 
-	posts[i] = posts[len(posts)-1]
-	posts[len(posts)-1] = post{}
-	posts = posts[:len(posts)-1]
-	m.Unlock()
+	s.posts[i] = s.posts[len(s.posts)-1]
+	s.posts[len(s.posts)-1] = post{}
+	s.posts = s.posts[:len(s.posts)-1]
+	s.m.Unlock()
 
 	fmt.Fprintf(w, "Deleted")
 }
 
 func main() {
+	s := &store{
+		[]post{{
+			ID:    1,
+			Body:  "You",
+			Title: "YOusdkfkd",
+		}},
+		&sync.RWMutex{},
+	}
+
 	r := chi.NewRouter()
-	r.Get("/posts", getPosts)
-	r.Post("/posts", createPost)
-	r.Get("/posts/{id}", getPost)
-	r.Put("/posts/{id}", updatePost)
-	r.Delete("/posts/{id}", deletePost)
+
+	r.Get("/posts", s.getPosts)
+	r.Post("/posts", s.createPost)
+	r.Get("/posts/{id}", s.getPost)
+	r.Put("/posts/{id}", s.updatePost)
+	r.Delete("/posts/{id}", s.deletePost)
 
 	http.ListenAndServe(":8090", r)
 }
