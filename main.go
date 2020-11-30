@@ -35,6 +35,7 @@ func (s *store) getPosts(w http.ResponseWriter, r *http.Request) {
 	s.m.RLock()
 	resp, err := json.Marshal(s.posts)
 	s.m.RUnlock()
+
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
@@ -54,6 +55,8 @@ func (s *store) getPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.m.RLock()
+	defer s.m.RUnlock()
+
 	i, ok := s.find(id)
 	if !ok {
 		http.Error(w, "post not found", http.StatusNotFound)
@@ -61,7 +64,6 @@ func (s *store) getPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	post := s.posts[i]
-	s.m.RUnlock()
 	resp, err := json.Marshal(post)
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -88,6 +90,8 @@ func (s *store) updatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.m.Lock()
+	defer s.m.Unlock()
+
 	i, ok := s.find(id)
 	if !ok {
 		http.Error(w, "post not found", http.StatusNotFound)
@@ -98,7 +102,6 @@ func (s *store) updatePost(w http.ResponseWriter, r *http.Request) {
 	updated.Body = p.Body
 	updated.Title = p.Title
 	s.posts[i] = updated
-	s.m.Unlock()
 
 	resp, err := json.Marshal(updated)
 	if err != nil {
@@ -127,9 +130,11 @@ func (s *store) createPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.ID = id
+
 	s.m.Lock()
 	s.posts = append(s.posts, p)
 	s.m.Unlock()
+
 	resp, err := json.Marshal(p)
 	if err != nil {
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -150,6 +155,8 @@ func (s *store) deletePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.m.Lock()
+	defer s.m.Unlock()
+
 	i, ok := s.find(id)
 	if !ok {
 		http.Error(w, "post not found", http.StatusNotFound)
@@ -159,7 +166,6 @@ func (s *store) deletePost(w http.ResponseWriter, r *http.Request) {
 	s.posts[i] = s.posts[len(s.posts)-1]
 	s.posts[len(s.posts)-1] = post{}
 	s.posts = s.posts[:len(s.posts)-1]
-	s.m.Unlock()
 
 	fmt.Fprintf(w, "Deleted")
 }
