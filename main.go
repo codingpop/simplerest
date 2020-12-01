@@ -41,8 +41,7 @@ func (s *store) getPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = w.Write(resp)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, "failed to write response", http.StatusInternalServerError)
 	}
 }
@@ -70,8 +69,7 @@ func (s *store) getPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = w.Write(resp)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, "failed to write response", http.StatusInternalServerError)
 	}
 }
@@ -109,8 +107,7 @@ func (s *store) updatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = w.Write(resp)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, "failed to write response", http.StatusInternalServerError)
 	}
 }
@@ -123,6 +120,7 @@ func (s *store) createPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.m.Lock()
 	id := 1
 	count := len(s.posts)
 	if count > 0 {
@@ -131,7 +129,6 @@ func (s *store) createPost(w http.ResponseWriter, r *http.Request) {
 
 	p.ID = id
 
-	s.m.Lock()
 	s.posts = append(s.posts, p)
 	s.m.Unlock()
 
@@ -141,8 +138,7 @@ func (s *store) createPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = w.Write(resp)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, "failed to write response", http.StatusInternalServerError)
 	}
 }
