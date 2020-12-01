@@ -120,8 +120,8 @@ func (s *store) createPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.m.Lock()
 	id := 1
+	s.m.Lock()
 	count := len(s.posts)
 	if count > 0 {
 		id = s.posts[count-1].ID + 1
