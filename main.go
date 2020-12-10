@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"sync"
 
 	"github.com/go-chi/chi"
+	"github.com/jackc/pgx/v4"
 )
 
 type post struct {
@@ -167,6 +170,13 @@ func (s *store) deletePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+		os.Exit(1)
+	}
+	defer conn.Close(context.Background())
+
 	s := &store{
 		[]post{{
 			ID:    1,
