@@ -2,10 +2,8 @@ package db
 
 import (
 	"context"
-	"fmt"
 
 	sq "github.com/Masterminds/squirrel"
-
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -127,8 +125,6 @@ func (db *DB) DeletePost(id int) error {
 	if commandTag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
-
-	fmt.Println("files", commandTag.RowsAffected())
 
 	return nil
 }

@@ -32,5 +32,5 @@ func main() {
 	r.Put("/posts/{id}", h.UpdatePost)
 	r.Delete("/posts/{id}", h.DeletePost)
 
-	http.ListenAndServe(":8000", r)
+	http.ListenAndServe(":8090", r)
 }
