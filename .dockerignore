@@ -1,0 +1,7 @@
+Dockerfile
+docker-compose.yml
+migrations/*
+makefile
+.env
+.env.example
+.gitignore
