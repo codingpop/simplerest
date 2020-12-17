@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: simplerest
-        image: codingpop/simplerest:v3
+        image: codingpop/simplerest:v4
         ports:
         - containerPort: 7000
         env:

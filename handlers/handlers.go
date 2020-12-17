@@ -29,6 +29,7 @@ func (h *Handlers) GetPosts(w http.ResponseWriter, r *http.Request) {
 
 	posts, err := h.db.GetPosts()
 	if err != nil {
+		log.Println(err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -44,14 +45,17 @@ func (h *Handlers) GetPost(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
+		log.Println(err)
+
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
 
 	post, err := h.db.GetPost(id)
 	if err != nil {
+		log.Println(err)
+
 		if err == pgx.ErrNoRows {
-			log.Println(err)
 			http.Error(w, "post not found", http.StatusNotFound)
 			return
 		}
@@ -60,14 +64,11 @@ func (h *Handlers) GetPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err != nil {
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
-	}
-
 	resp := map[string]db.Post{"post": post}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Println(err)
+
 		http.Error(w, "failed to write response", http.StatusInternalServerError)
 	}
 }
@@ -83,12 +84,16 @@ func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&payload); err != nil {
+		log.Println(err)
+
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
+		log.Println(err)
+
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
@@ -100,6 +105,8 @@ func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.db.UpdatePost(id, p); err != nil {
+		log.Println(err)
+
 		if err == pgx.ErrNoRows {
 			log.Println(err)
 			http.Error(w, "post not found", http.StatusNotFound)
@@ -111,6 +118,8 @@ func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
+		log.Println(err)
+
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -119,6 +128,8 @@ func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		"post": p,
 	}
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Println(err)
+
 		http.Error(w, "failed to write response", http.StatusInternalServerError)
 	}
 }
@@ -134,6 +145,8 @@ func (h *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&payload); err != nil {
+		log.Println(err)
+
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -144,12 +157,16 @@ func (h *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.db.CreatePost(&p); err != nil {
+		log.Println(err)
+
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	resp := map[string]db.Post{"post": p}
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Println(err)
+
 		http.Error(w, "failed to write response", http.StatusInternalServerError)
 	}
 }
@@ -158,13 +175,16 @@ func (h *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) DeletePost(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
+		log.Println(err)
+
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
 
 	if err := h.db.DeletePost(id); err != nil {
+		log.Println(err)
+
 		if err == pgx.ErrNoRows {
-			log.Println(err)
 			http.Error(w, "post not found", http.StatusNotFound)
 			return
 		}
