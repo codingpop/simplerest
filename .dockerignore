@@ -1,7 +1,8 @@
 Dockerfile
 docker-compose.yml
-migrations/*
 makefile
 .env
 .env.example
 .gitignore
+k8s
+.git

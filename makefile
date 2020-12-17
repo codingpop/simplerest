@@ -10,5 +10,5 @@ migrate:
 	migrate -path migrations -database ${DATABASE_URL} up
 
 dockerize:
-	docker build -t codingpop/simplerest -f Dockerfile .
-	docker push codingpop/simplerest
+	docker build -t codingpop/simplerest:v3 -f Dockerfile .
+	docker push codingpop/simplerest:v3
