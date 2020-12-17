@@ -11,3 +11,4 @@ migrate:
 
 dockerize:
 	docker build -t codingpop/simplerest -f Dockerfile .
+	docker push codingpop/simplerest
