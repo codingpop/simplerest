@@ -25,7 +25,11 @@ func main() {
 		log.Fatalln(err)
 	}
 	if err := m.Up(); err != nil {
-		log.Println(err)
+		if err == migrate.ErrNoChange {
+			log.Println("MIGRATION: no database change")
+		} else {
+			log.Fatalln(err)
+		}
 	}
 
 	pool, err := pgxpool.Connect(context.Background(), os.Getenv("DATABASE_URL"))

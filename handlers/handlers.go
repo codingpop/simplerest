@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v4"
 )
 
-// Handlers ...
+// Handlers hold all the route handlers
 type Handlers struct {
 	db *db.DB
 }
@@ -23,11 +23,11 @@ func New(db *db.DB) *Handlers {
 	}
 }
 
-// GetPosts ...
+// GetPosts fetches all posts
 func (h *Handlers) GetPosts(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	posts, err := h.db.GetPosts()
+	posts, err := h.db.GetPosts(r.Context())
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -39,7 +39,7 @@ func (h *Handlers) GetPosts(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetPost ...
+// GetPost fetches a particular post
 func (h *Handlers) GetPost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -51,7 +51,7 @@ func (h *Handlers) GetPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	post, err := h.db.GetPost(id)
+	post, err := h.db.GetPost(r.Context(), id)
 	if err != nil {
 		log.Println(err)
 
@@ -73,21 +73,13 @@ func (h *Handlers) GetPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// UpdatePost ..
+// UpdatePost updates a particular post
 func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var payload struct {
 		Title string `json:"title"`
 		Body  string `json:"body"`
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&payload); err != nil {
-		log.Println(err)
-
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
 	}
 
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
@@ -98,13 +90,21 @@ func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&payload); err != nil {
+		log.Println(err)
+
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
 	p := db.Post{
 		ID:    id,
 		Title: payload.Title,
 		Body:  payload.Body,
 	}
 
-	if err := h.db.UpdatePost(id, p); err != nil {
+	if err := h.db.UpdatePost(r.Context(), id, p); err != nil {
 		log.Println(err)
 
 		if err == pgx.ErrNoRows {
@@ -134,7 +134,7 @@ func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// CreatePost ...
+// CreatePost creates a new post
 func (h *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -156,7 +156,7 @@ func (h *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
 		Body:  payload.Body,
 	}
 
-	if err := h.db.CreatePost(&p); err != nil {
+	if err := h.db.CreatePost(r.Context(), &p); err != nil {
 		log.Println(err)
 
 		http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -171,7 +171,7 @@ func (h *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// DeletePost ...
+// DeletePost deletes a post
 func (h *Handlers) DeletePost(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
@@ -181,7 +181,7 @@ func (h *Handlers) DeletePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.db.DeletePost(id); err != nil {
+	if err := h.db.DeletePost(r.Context(), id); err != nil {
 		log.Println(err)
 
 		if err == pgx.ErrNoRows {

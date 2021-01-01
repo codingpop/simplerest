@@ -2,7 +2,6 @@ include .env
 export
 
 dev:
-	echo ${DATABASE_URL}
 	go run main.go
 
 migrate:
