@@ -1,8 +1,7 @@
 package main
 
 import (
-	"context"
-	"fmt"
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -14,7 +13,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jackc/pgx/v4/pgxpool"
+	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 func main() {
@@ -32,15 +31,15 @@ func main() {
 		}
 	}
 
-	pool, err := pgxpool.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	database, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		os.Exit(1)
+		log.Fatalln("Unable to connect to the database")
 	}
-	defer pool.Close()
+	defer database.Close()
 
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar)
-	db := db.New(pool, psql)
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).RunWith(database)
+
+	db := db.New(psql)
 	h := handlers.New(db)
 	r := chi.NewRouter()
 

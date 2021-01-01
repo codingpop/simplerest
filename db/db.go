@@ -2,22 +2,19 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // DB has all the tooling for talking to postgres
 type DB struct {
-	pool *pgxpool.Pool
 	psql sq.StatementBuilderType
 }
 
 // New creates a DB instance
-func New(pool *pgxpool.Pool, psql sq.StatementBuilderType) *DB {
+func New(psql sq.StatementBuilderType) *DB {
 	return &DB{
-		pool: pool,
 		psql: psql,
 	}
 }
@@ -30,19 +27,16 @@ type Post struct {
 }
 
 // GetPosts fetches all posts
-func (db *DB) GetPosts(ctx context.Context) ([]Post, error) {
+func (db *DB) GetPosts(ctx context.Context) (_ []Post, retErr error) {
 	posts := []Post{}
 
-	sql, _, err := db.psql.Select("*").From("posts").ToSql()
+	rows, err := db.psql.Select("*").From("posts").Query()
 	if err != nil {
 		return nil, err
 	}
-
-	rows, err := db.pool.Query(ctx, sql)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+	defer func() {
+		retErr = rows.Close()
+	}()
 
 	for rows.Next() {
 		var p Post
@@ -65,12 +59,11 @@ func (db *DB) GetPosts(ctx context.Context) ([]Post, error) {
 func (db *DB) GetPost(ctx context.Context, id int) (Post, error) {
 	var p Post
 
-	sql, args, err := db.psql.Select("id", "title", "body").From("posts").Where(sq.Eq{"id": id}).ToSql()
-	if err != nil {
-		return Post{}, err
-	}
-
-	if err := db.pool.QueryRow(ctx, sql, args...).Scan(&p.ID, &p.Title, &p.Body); err != nil {
+	if err := db.psql.
+		Select("id", "title", "body").
+		From("posts").Where(sq.Eq{"id": id}).
+		QueryRow().
+		Scan(&p.ID, &p.Title, &p.Body); err != nil {
 		return Post{}, err
 	}
 
@@ -79,12 +72,14 @@ func (db *DB) GetPost(ctx context.Context, id int) (Post, error) {
 
 // CreatePost creates a new post
 func (db *DB) CreatePost(ctx context.Context, p *Post) error {
-	sql, args, err := db.psql.Insert("posts").Columns("title", "body").Values(p.Title, p.Body).Suffix("RETURNING id").ToSql()
+	err := db.psql.
+		Insert("posts").
+		Columns("title", "body").
+		Values(p.Title, p.Body).
+		Suffix("RETURNING id").
+		QueryRow().
+		Scan(&p.ID)
 	if err != nil {
-		return err
-	}
-
-	if err := db.pool.QueryRow(ctx, sql, args...).Scan(&p.ID); err != nil {
 		return err
 	}
 
@@ -93,21 +88,23 @@ func (db *DB) CreatePost(ctx context.Context, p *Post) error {
 
 // UpdatePost updates an existing post
 func (db *DB) UpdatePost(ctx context.Context, id int, p Post) error {
-	sql, args, err := db.psql.Update("posts").SetMap(map[string]interface{}{
-		"title": p.Title,
-		"body":  p.Body,
-	}).Where(sq.Eq{"id": id}).ToSql()
+	res, err := db.psql.
+		Update("posts").
+		SetMap(map[string]interface{}{
+			"title": p.Title,
+			"body":  p.Body,
+		}).
+		Where(sq.Eq{"id": id}).Exec()
 	if err != nil {
 		return err
 	}
 
-	commandTag, err := db.pool.Exec(ctx, sql, args...)
+	count, err := res.RowsAffected()
 	if err != nil {
 		return err
 	}
-
-	if commandTag.RowsAffected() == 0 {
-		return pgx.ErrNoRows
+	if count == 0 {
+		return sql.ErrNoRows
 	}
 
 	return nil
@@ -115,18 +112,17 @@ func (db *DB) UpdatePost(ctx context.Context, id int, p Post) error {
 
 // DeletePost deletes a post
 func (db *DB) DeletePost(ctx context.Context, id int) error {
-	sql, args, err := db.psql.Delete("posts").Where(sq.Eq{"id": id}).ToSql()
+	res, err := db.psql.Delete("posts").Where(sq.Eq{"id": id}).Exec()
 	if err != nil {
 		return err
 	}
 
-	commandTag, err := db.pool.Exec(ctx, sql, args...)
+	count, err := res.RowsAffected()
 	if err != nil {
 		return err
 	}
-
-	if commandTag.RowsAffected() == 0 {
-		return pgx.ErrNoRows
+	if count == 0 {
+		return sql.ErrNoRows
 	}
 
 	return nil

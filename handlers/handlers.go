@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/codingpop/simplerest/db"
 	"github.com/go-chi/chi"
-	"github.com/jackc/pgx/v4"
 )
 
 // Handlers hold all the route handlers
@@ -55,7 +55,7 @@ func (h *Handlers) GetPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Println(err)
 
-		if err == pgx.ErrNoRows {
+		if err == sql.ErrNoRows {
 			http.Error(w, "post not found", http.StatusNotFound)
 			return
 		}
@@ -107,7 +107,7 @@ func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	if err := h.db.UpdatePost(r.Context(), id, p); err != nil {
 		log.Println(err)
 
-		if err == pgx.ErrNoRows {
+		if err == sql.ErrNoRows {
 			log.Println(err)
 			http.Error(w, "post not found", http.StatusNotFound)
 			return
@@ -184,7 +184,7 @@ func (h *Handlers) DeletePost(w http.ResponseWriter, r *http.Request) {
 	if err := h.db.DeletePost(r.Context(), id); err != nil {
 		log.Println(err)
 
-		if err == pgx.ErrNoRows {
+		if err == sql.ErrNoRows {
 			http.Error(w, "post not found", http.StatusNotFound)
 			return
 		}
