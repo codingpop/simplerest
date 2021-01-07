@@ -18,9 +18,9 @@ spec:
         - name: postgresdb
           image: postgres:alpine
           imagePullPolicy: Always
-          # securityContext:
-          #   priviledged: true
-          #   fsGroup: 2000
+          securityContext:
+            priviledged: true
+            fsGroup: 2000
           ports:
             - containerPort: 5432
           env:
@@ -39,13 +39,13 @@ spec:
                 configMapKeyRef:
                   name: postgres-configmap
                   key: database_name
-      #     volumeMounts:
-      #       - mountPath: /var/lib/postgresql/data
-      #         name: postgredb
-      # volumes:
-      #   - name: postgredb
-      #     persistentVolumeClaim:
-      #       claimName: postgres-pv-claim
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: postgredb
+      volumes:
+        - name: postgredb
+          persistentVolumeClaim:
+            claimName: postgres-pv-claim
 ---
 apiVersion: v1
 kind: Service

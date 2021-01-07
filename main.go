@@ -31,13 +31,13 @@ func main() {
 		}
 	}
 
-	database, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
+	postgres, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatalln("Unable to connect to the database")
 	}
-	defer database.Close()
+	defer postgres.Close()
 
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).RunWith(database)
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).RunWith(postgres)
 
 	db := db.New(psql)
 	h := handlers.New(db)
