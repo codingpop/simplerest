@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simplerest
+  labels:
+    app: simplerest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: simplerest
+  template:
+    metadata:
+      labels:
+        app: simplerest
+    spec:
+      containers:
+        - name: simplerest
+          image: codingpop/simplerest:v5
+          ports:
+            - containerPort: 7000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: database-url
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: simplerest-service
+spec:
+  selector:
+    app: simplerest
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 7000
+      targetPort: 7000

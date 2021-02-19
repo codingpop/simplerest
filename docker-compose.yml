@@ -1,0 +1,15 @@
+version: '3.1'
+services:
+  simplerestdb:
+    image: postgres
+    restart: always
+    ports:
+      - ${POSTGRES_PORT}:5432
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_NAME}
+    volumes:
+      - simplerest-postgres:/var/lib/postgresql/data
+volumes:
+  simplerest-postgres:
