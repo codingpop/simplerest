@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"log"
 
 	sq "github.com/Masterminds/squirrel"
 )
@@ -13,10 +14,15 @@ type DB struct {
 }
 
 // New creates a DB instance
-func New(psql sq.StatementBuilderType) *DB {
-	return &DB{
-		psql: psql,
+func New(dbURL string) (*DB, func() error) {
+	postgres, err := sql.Open("pgx", dbURL)
+	if err != nil {
+		log.Fatalln("Unable to connect to the database")
 	}
+	teardown := postgres.Close
+
+	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).RunWith(postgres)
+	return &DB{psql: psql}, teardown
 }
 
 // Post represents a post in JSON

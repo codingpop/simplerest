@@ -4,8 +4,10 @@ export
 dev:
 	go run main.go
 
-migrate:
+migrate-down:
 	migrate -database ${DATABASE_URL} -path migrations down
+
+migrate:
 	migrate -path migrations -database ${DATABASE_URL} up
 
 dockerize:

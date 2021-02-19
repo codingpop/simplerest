@@ -1,12 +1,10 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 	"os"
 
-	sq "github.com/Masterminds/squirrel"
 	"github.com/codingpop/simplerest/db"
 	"github.com/codingpop/simplerest/handlers"
 	"github.com/go-chi/chi"
@@ -17,12 +15,13 @@ import (
 )
 
 func main() {
-	m, err := migrate.New(
-		"file://migrations",
-		os.Getenv("DATABASE_URL"))
+	dbURL := os.Getenv("DATABASE_URL")
+
+	m, err := migrate.New("file://migrations", dbURL)
 	if err != nil {
 		log.Fatalln(err)
 	}
+
 	if err := m.Up(); err != nil {
 		if err == migrate.ErrNoChange {
 			log.Println("MIGRATION: no database change")
@@ -31,15 +30,9 @@ func main() {
 		}
 	}
 
-	postgres, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
-	if err != nil {
-		log.Fatalln("Unable to connect to the database")
-	}
-	defer postgres.Close()
+	db, teardown := db.New(dbURL)
+	defer teardown()
 
-	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).RunWith(postgres)
-
-	db := db.New(psql)
 	h := handlers.New(db)
 	r := chi.NewRouter()
 
