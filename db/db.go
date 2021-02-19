@@ -30,12 +30,15 @@ type Post struct {
 func (db *DB) GetPosts(ctx context.Context) (_ []Post, retErr error) {
 	posts := []Post{}
 
-	rows, err := db.psql.Select("*").From("posts").Query()
+	rows, err := db.psql.Select("*").From("posts").QueryContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
-		retErr = rows.Close()
+		err := rows.Close()
+		if retErr == nil {
+			retErr = err
+		}
 	}()
 
 	for rows.Next() {
@@ -62,7 +65,7 @@ func (db *DB) GetPost(ctx context.Context, id int) (Post, error) {
 	if err := db.psql.
 		Select("id", "title", "body").
 		From("posts").Where(sq.Eq{"id": id}).
-		QueryRow().
+		QueryRowContext(ctx).
 		Scan(&p.ID, &p.Title, &p.Body); err != nil {
 		return Post{}, err
 	}
@@ -74,10 +77,12 @@ func (db *DB) GetPost(ctx context.Context, id int) (Post, error) {
 func (db *DB) CreatePost(ctx context.Context, p *Post) error {
 	err := db.psql.
 		Insert("posts").
-		Columns("title", "body").
-		Values(p.Title, p.Body).
+		SetMap(map[string]interface{}{
+			"title": p.Title,
+			"body":  p.Body,
+		}).
 		Suffix("RETURNING id").
-		QueryRow().
+		QueryRowContext(ctx).
 		Scan(&p.ID)
 	if err != nil {
 		return err
@@ -94,7 +99,7 @@ func (db *DB) UpdatePost(ctx context.Context, id int, p Post) error {
 			"title": p.Title,
 			"body":  p.Body,
 		}).
-		Where(sq.Eq{"id": id}).Exec()
+		Where(sq.Eq{"id": id}).ExecContext(ctx)
 	if err != nil {
 		return err
 	}
@@ -112,7 +117,7 @@ func (db *DB) UpdatePost(ctx context.Context, id int, p Post) error {
 
 // DeletePost deletes a post
 func (db *DB) DeletePost(ctx context.Context, id int) error {
-	res, err := db.psql.Delete("posts").Where(sq.Eq{"id": id}).Exec()
+	res, err := db.psql.Delete("posts").Where(sq.Eq{"id": id}).ExecContext(ctx)
 	if err != nil {
 		return err
 	}

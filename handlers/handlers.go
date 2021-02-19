@@ -1,9 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
-	"log"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -11,15 +12,23 @@ import (
 	"github.com/go-chi/chi"
 )
 
+type store interface {
+	GetPosts(context.Context) ([]db.Post, error)
+	GetPost(context.Context, int) (db.Post, error)
+	CreatePost(context.Context, *db.Post) error
+	UpdatePost(context.Context, int, db.Post) error
+	DeletePost(context.Context, int) error
+}
+
 // Handlers hold all the route handlers
 type Handlers struct {
-	db *db.DB
+	db store
 }
 
 // New creates a new instance of Handlers
-func New(db *db.DB) *Handlers {
+func New(s store) *Handlers {
 	return &Handlers{
-		db: db,
+		db: s,
 	}
 }
 
@@ -29,7 +38,6 @@ func (h *Handlers) GetPosts(w http.ResponseWriter, r *http.Request) {
 
 	posts, err := h.db.GetPosts(r.Context())
 	if err != nil {
-		log.Println(err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -45,17 +53,13 @@ func (h *Handlers) GetPost(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		log.Println(err)
-
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
 
 	post, err := h.db.GetPost(r.Context(), id)
 	if err != nil {
-		log.Println(err)
-
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "post not found", http.StatusNotFound)
 			return
 		}
@@ -67,8 +71,6 @@ func (h *Handlers) GetPost(w http.ResponseWriter, r *http.Request) {
 	resp := map[string]db.Post{"post": post}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Println(err)
-
 		http.Error(w, "failed to write response", http.StatusInternalServerError)
 	}
 }
@@ -84,16 +86,12 @@ func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		log.Println(err)
-
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
 
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&payload); err != nil {
-		log.Println(err)
-
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -105,10 +103,7 @@ func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.db.UpdatePost(r.Context(), id, p); err != nil {
-		log.Println(err)
-
-		if err == sql.ErrNoRows {
-			log.Println(err)
+		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "post not found", http.StatusNotFound)
 			return
 		}
@@ -118,8 +113,6 @@ func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		log.Println(err)
-
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -128,8 +121,6 @@ func (h *Handlers) UpdatePost(w http.ResponseWriter, r *http.Request) {
 		"post": p,
 	}
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Println(err)
-
 		http.Error(w, "failed to write response", http.StatusInternalServerError)
 	}
 }
@@ -145,8 +136,6 @@ func (h *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&payload); err != nil {
-		log.Println(err)
-
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
@@ -157,16 +146,12 @@ func (h *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.db.CreatePost(r.Context(), &p); err != nil {
-		log.Println(err)
-
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
 	resp := map[string]db.Post{"post": p}
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Println(err)
-
 		http.Error(w, "failed to write response", http.StatusInternalServerError)
 	}
 }
@@ -175,16 +160,12 @@ func (h *Handlers) CreatePost(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) DeletePost(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		log.Println(err)
-
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
 
 	if err := h.db.DeletePost(r.Context(), id); err != nil {
-		log.Println(err)
-
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "post not found", http.StatusNotFound)
 			return
 		}
