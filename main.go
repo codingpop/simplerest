@@ -31,7 +31,11 @@ func main() {
 	}
 
 	db, teardown := db.New(dbURL)
-	defer teardown()
+	defer func() {
+		if err := teardown(); err != nil {
+			log.Fatalln(err)
+		}
+	}()
 
 	h := handlers.New(db)
 	r := chi.NewRouter()
