@@ -19,10 +19,9 @@ func New(dbURL string) (*DB, func() error) {
 	if err != nil {
 		log.Fatalln("Unable to connect to the database")
 	}
-	teardown := postgres.Close
 
 	psql := sq.StatementBuilder.PlaceholderFormat(sq.Dollar).RunWith(postgres)
-	return &DB{psql: psql}, teardown
+	return &DB{psql: psql}, postgres.Close
 }
 
 // Post represents a post in JSON
